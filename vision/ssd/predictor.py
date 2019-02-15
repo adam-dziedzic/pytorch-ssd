@@ -7,7 +7,8 @@ from ..utils.misc import Timer
 
 class Predictor:
     def __init__(self, net, size, mean=0.0, std=1.0, nms_method=None,
-                 iou_threshold=0.45, filter_threshold=0.01, candidate_size=200, sigma=0.5, device=None):
+                 iou_threshold=0.45, filter_threshold=0.01, candidate_size=200,
+                 sigma=0.5, device=None, top_k=-1):
         self.net = net
         self.transform = PredictionTransform(size, mean, std)
         self.iou_threshold = iou_threshold
@@ -19,14 +20,16 @@ class Predictor:
         if device:
             self.device = device
         else:
-            self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+            self.device = torch.device(
+                "cuda:0" if torch.cuda.is_available() else "cpu")
 
         self.net.to(self.device)
         self.net.eval()
 
         self.timer = Timer()
+        self.top_k = top_k
 
-    def predict(self, image, top_k=-1, prob_threshold=None):
+    def predict(self, image, top_k=None, prob_threshold=None):
         cpu_device = torch.device("cpu")
         height, width, _ = image.shape
         image = self.transform(image)
@@ -40,6 +43,8 @@ class Predictor:
         scores = scores[0]
         if not prob_threshold:
             prob_threshold = self.filter_threshold
+        if not top_k:
+            top_k = self.top_k
         # this version of nms is slower on GPU, so we move data to CPU.
         boxes = boxes.to(cpu_device)
         scores = scores.to(cpu_device)
@@ -68,4 +73,10 @@ class Predictor:
         picked_box_probs[:, 1] *= height
         picked_box_probs[:, 2] *= width
         picked_box_probs[:, 3] *= height
-        return picked_box_probs[:, :4], torch.tensor(picked_labels), picked_box_probs[:, 4]
+        return picked_box_probs[:, :4], torch.tensor(
+            picked_labels), picked_box_probs[:, 4]
+
+    def predict_for_mot(self, image):
+        boxes, labels, probs = self.predict(image, top_k=None,
+                                            prob_threshold=None)
+        return [x for x in zip(boxes, probs, labels)]
