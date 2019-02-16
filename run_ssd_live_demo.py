@@ -55,7 +55,8 @@ else:
 net.load(model_path)
 
 if net_type == 'vgg16-ssd':
-    predictor = create_vgg_ssd_predictor(net, candidate_size=200)
+    predictor = create_vgg_ssd_predictor(net, candidate_size=200,
+                                         filter_threshold=0.01)
 elif net_type == 'mb1-ssd':
     predictor = create_mobilenetv1_ssd_predictor(net, candidate_size=200)
 elif net_type == 'mb1-ssd-lite':

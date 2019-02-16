@@ -1,4 +1,5 @@
 import torch
+import numpy as np
 
 from ..utils import box_utils
 from .data_preprocessing import PredictionTransform
@@ -79,4 +80,9 @@ class Predictor:
     def predict_for_mot(self, image):
         boxes, labels, probs = self.predict(image, top_k=None,
                                             prob_threshold=None)
-        return [x for x in zip(boxes, probs, labels)]
+        # zip in boxes, probs and labels (transform each entry to a single
+        # numpy array.
+        result = torch.cat(
+            [boxes, probs.unsqueeze(1), labels.float().unsqueeze(1),
+             labels.float().unsqueeze(1)], dim=1)
+        return result
